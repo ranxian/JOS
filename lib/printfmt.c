@@ -236,15 +236,16 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
 			if (C_color == 0) {
 				char fc = *fmt++; // foreground color;
 				char bc = *fmt++;
-				if (fc == 'R') C_color = C_R << 12;
-				if (fc == 'B') C_color = C_B << 12;
-				if (fc == 'Y') C_color = C_Y << 12;
-				if (bc == 'R') C_color |= C_R << 8;
-				if (bc == 'B') C_color |= C_B << 8;
-				if (bc == 'Y') C_color |= C_Y << 8;
+				if (fc == 'R') C_color = (C_R << 12);
+				if (fc == 'B') C_color = (C_B << 12);
+				if (fc == 'Y') C_color = (C_Y << 12);
+				if (bc == 'R') C_color |= (C_R << 8);
+				if (bc == 'B') C_color |= (C_B << 8);
+				if (bc == 'Y') C_color |= (C_Y << 8);
 			} else {
 				C_color = 0;
 			}
+			break;
 
 		// escaped '%' character
 		case '%':

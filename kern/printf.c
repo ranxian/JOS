@@ -10,7 +10,7 @@ int C_color = 0;
 static void
 putch(int ch, int *cnt)
 {
-	cputchar(ch | C_color << 8);
+	cputchar(ch | (C_color));
 	*cnt++;
 }
 
