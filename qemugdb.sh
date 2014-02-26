@@ -1,0 +1,2 @@
+make qemu-gdb &
+gdb
