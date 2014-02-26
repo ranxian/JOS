@@ -231,6 +231,21 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
 			printnum(putch, putdat, num, base, width, padc);
 			break;
 
+		// color format
+		case 'C':
+			if (C_color == 0) {
+				char fc = *fmt++; // foreground color;
+				char bc = *fmt++;
+				if (fc == 'R') C_color = C_R << 12;
+				if (fc == 'B') C_color = C_B << 12;
+				if (fc == 'Y') C_color = C_Y << 12;
+				if (bc == 'R') C_color |= C_R << 8;
+				if (bc == 'B') C_color |= C_B << 8;
+				if (bc == 'Y') C_color |= C_Y << 8;
+			} else {
+				C_color = 0;
+			}
+
 		// escaped '%' character
 		case '%':
 			putch(ch, putdat);

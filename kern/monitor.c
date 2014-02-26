@@ -133,7 +133,7 @@ monitor(struct Trapframe *tf)
 	char *buf;
 
 	cprintf("Welcome to the JOS kernel monitor!\n");
-	cprintf("Type " CC_RED "'help'" CC_RESET " for a list of commands.\n");
+	cprintf("Type %CBR'help'%C for a list of commands.\n");
 
 	while (1) {
 		buf = readline("K> ");

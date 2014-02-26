@@ -17,12 +17,6 @@
 #define CRT_COLS	80
 #define CRT_SIZE	(CRT_ROWS * CRT_COLS)
 
-#define CC_RED     "\x1b[31m"
-#define CC_BLUE    "\x1b[34m"
-#define CC_YELLOW  "\x1b[33m"
-#define CC_RESET   "\x1b[0m"
-
-
 
 void cons_init(void);
 int cons_getc(void);
