@@ -8,9 +8,9 @@
 #endif /* !NULL */
 
 // color
-#define C_R 0x8
-#define C_Y 0xc
-#define C_B 0x2
+#define C_R 0x4
+#define C_Y 0xe
+#define C_B 0x1
 extern int C_color;
 
 // lib/stdio.c
