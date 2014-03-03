@@ -92,14 +92,17 @@ boot_alloc(uint32_t n)
 		extern char end[];
 		nextfree = ROUNDUP((char *) end, PGSIZE);
 	}
-
 	// Allocate a chunk large enough to hold 'n' bytes, then update
 	// nextfree.  Make sure nextfree is kept aligned
 	// to a multiple of PGSIZE.
 	//
 	// LAB 2: Your code here.
+	
+	result = nextfree;
+	if (n > 0) 
+		nextfree += ROUNDUP(n, PGSIZE);
 
-	return NULL;
+	return result;
 }
 
 // Set up a two-level page table:
@@ -114,6 +117,7 @@ boot_alloc(uint32_t n)
 void
 mem_init(void)
 {
+	boot_alloc(0);
 	uint32_t cr0;
 	size_t n;
 
@@ -121,7 +125,7 @@ mem_init(void)
 	i386_detect_memory();
 
 	// Remove this line when you're ready to test this function.
-	panic("mem_init: This function is not finished\n");
+	// panic("mem_init: This function is not finished\n");
 
 	//////////////////////////////////////////////////////////////////////
 	// create initial page directory.
@@ -143,6 +147,7 @@ mem_init(void)
 	// each physical page, there is a corresponding struct PageInfo in this
 	// array.  'npages' is the number of physical pages in memory.
 	// Your code goes here:
+	pages = boot_alloc(npages * sizeof(struct PageInfo));
 
 
 	//////////////////////////////////////////////////////////////////////
@@ -156,6 +161,7 @@ mem_init(void)
 	check_page_free_list(1);
 	check_page_alloc();
 	check_page();
+	cprintf("pass check\n");
 
 	//////////////////////////////////////////////////////////////////////
 	// Now we set up virtual memory
@@ -246,11 +252,28 @@ page_init(void)
 	// Change the code to reflect this.
 	// NB: DO NOT actually touch the physical memory corresponding to
 	// free pages!
+
 	size_t i;
-	for (i = 0; i < npages; i++) {
+	// PP #0 is in use
+	pages[0].pp_ref = 1;
+	// reset base mem is free
+	for (i = 1; i <= npages_basemem; i++)
 		pages[i].pp_ref = 0;
-		pages[i].pp_link = page_free_list;
-		page_free_list = &pages[i];
+	// IO hole is in use
+	for (i = PGNUM(IOPHYSMEM); i < PGNUM(EXTPHYSMEM); i++)
+		pages[i].pp_ref = 1;
+	// kernel used space and other used data structures
+	void *nextfree = boot_alloc(0);
+	for (; i++; i < PGNUM(PADDR(nextfree)))
+		pages[i].pp_ref = 1;
+	// rest is free
+	for (; i < npages; i++)
+		pages[i].pp_ref = 0;
+	for (i = 0; i < npages; i++) {
+		if (pages[i].pp_ref == 0) {
+			pages[i].pp_link = page_free_list;
+			page_free_list = &pages[i];
+		}
 	}
 }
 
