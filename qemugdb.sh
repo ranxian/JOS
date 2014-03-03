@@ -1,2 +1,2 @@
-make qemu-gdb &
+make qemu-nox-gdb &
 gdb
