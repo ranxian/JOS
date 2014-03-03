@@ -119,6 +119,7 @@ mem_init(void)
 {
 	boot_alloc(0);
 	uint32_t cr0;
+	uint32_t cr4;
 	size_t n;
 
 	// Find out how much memory the machine has (npages & npages_basemem).
@@ -306,9 +307,7 @@ page_alloc(int alloc_flags)
 	if (result != NULL) {
 		page_free_list = result->pp_link;
 		if (alloc_flags & ALLOC_ZERO) {
-			struct PageInfo *fl = page_free_list;
 			memset(page2kva(result), 0, PGSIZE);
-			assert(page_free_list == fl);
 		}
 	}
 	return result;
@@ -383,19 +382,6 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 
 	pt = KADDR(PTE_ADDR(*pde));
 	pte = &pt[ptx];
-
-	return pte;
-
-	if ((*pte & PTE_P) == 0) {
-		if (create) {
-			if ((pp = page_alloc(0)) == NULL)
-				panic("not enough memeory!");
-
-			*pte = page2pa(pp) | PTE_P;
-			pp->pp_ref += 1;
-		} else 
-			return NULL;
-	}
 
 	return pte;
 }
