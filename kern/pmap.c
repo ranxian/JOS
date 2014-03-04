@@ -18,6 +18,8 @@ pde_t *kern_pgdir;		// Kernel's initial page directory
 struct PageInfo *pages;		// Physical page state array
 static struct PageInfo *page_free_list;	// Free list of physical pages
 
+static int enable_pse = 0;
+
 
 // --------------------------------------------------------------
 // Detect machine's physical memory setup.
@@ -32,7 +34,8 @@ nvram_read(int r)
 static void
 i386_detect_memory(void)
 {
-	size_t npages_extmem;
+	size_t npages_extmem, cpuinfo;
+	uint32_t cr4;
 
 	// Use CMOS calls to measure available base & extended memory.
 	// (CMOS calls return results in kilobytes.)
@@ -46,10 +49,20 @@ i386_detect_memory(void)
 	else
 		npages = npages_basemem;
 
+	// Check if CPU support PSE
+	cpuid(1, NULL, NULL, NULL, &cpuinfo);
+	if (cpuinfo & 0x8) {
+		cr4 = rcr4();
+		cr4 |= CR4_PSE;
+		lcr4(cr4);
+		enable_pse = 1;
+	}
+
 	cprintf("Physical memory: %uK available, base = %uK, extended = %uK\n",
 		npages * PGSIZE / 1024,
 		npages_basemem * PGSIZE / 1024,
 		npages_extmem * PGSIZE / 1024);
+	cprintf("PSE Support: %s\n", enable_pse ? "YES" : "NO");
 }
 
 
@@ -58,6 +71,7 @@ i386_detect_memory(void)
 // --------------------------------------------------------------
 
 static void boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm);
+static void boot_map_region_pse(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm);
 static void check_page_free_list(bool only_low_memory);
 static void check_page_alloc(void);
 static void check_kern_pgdir(void);
@@ -119,7 +133,6 @@ mem_init(void)
 {
 	boot_alloc(0);
 	uint32_t cr0;
-	uint32_t cr4;
 	size_t n;
 
 	// Find out how much memory the machine has (npages & npages_basemem).
@@ -199,7 +212,11 @@ mem_init(void)
 	// we just set up the mapping anyway.
 	// Permissions: kernel RW, user NONE
 	// Your code goes here:
-	boot_map_region(kern_pgdir, KERNBASE, (~0)-KERNBASE, 0, PTE_P|PTE_W);
+	if (enable_pse)
+		boot_map_region_pse(kern_pgdir, KERNBASE, (~0)-KERNBASE, 0, PTE_P|PTE_W);
+	else
+		boot_map_region(kern_pgdir, KERNBASE, (~0)-KERNBASE, 0, PTE_P|PTE_W);
+
 	// Check that the initial page directory has been set up correctly.
 	check_kern_pgdir();
 
@@ -399,8 +416,7 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 static void
 boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
 {
-	uintptr_t vaend = va + size;
-	uint32_t sz = 0;
+	size_t sz = 0;
 
 	while (sz <= size) {
 		pte_t *pte = pgdir_walk(pgdir, (void *)va, 1);
@@ -410,6 +426,22 @@ boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm
 		sz += PGSIZE;
 	}
 	// Fill this function in
+}
+
+
+// Same function as boot_map_region, but for mapping 4M pages
+// size must be the times of 4
+static void
+boot_map_region_pse(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
+{
+	size_t sz = 0;
+
+	while (sz <= size) {
+		pgdir[PDX(va)] = pa|PTE_P|PTE_PS|perm;
+		va += PTSIZE;
+		pa += PTSIZE;
+		sz += PTSIZE;
+	}
 }
 
 //
@@ -729,6 +761,9 @@ check_va2pa(pde_t *pgdir, uintptr_t va)
 	pgdir = &pgdir[PDX(va)];
 	if (!(*pgdir & PTE_P))
 		return ~0;
+	// if using page size extension
+	if (enable_pse && (*pgdir & PTE_PS))
+		return PTE_ADDR_PSE(*pgdir) | PGOFF_PSE(va);
 	p = (pte_t*) KADDR(PTE_ADDR(*pgdir));
 	if (!(p[PTX(va)] & PTE_P))
 		return ~0;
