@@ -10,6 +10,7 @@
 #include <kern/console.h>
 #include <kern/monitor.h>
 #include <kern/kdebug.h>
+#include <kern/pmap.h>
 
 #define CMDBUF_SIZE	80	// enough for one VGA text line
 
@@ -25,6 +26,9 @@ static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
 	{ "backtrace", "Stack backtrace", mon_backtrace },
+	{ "showmappings", "Show virtual page mappings", mon_showmappings },
+	{ "chperm", "Change permission bits", mon_chperm },
+	{ "dump", "Dump memory content", mon_dump },
 };
 #define NCOMMANDS (sizeof(commands)/sizeof(commands[0]))
 
@@ -72,6 +76,116 @@ mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 		ebp = (int *)*ebp;
 	}
 	// Your code here.
+	return 0;
+}
+
+int
+mon_showmappings(int argc, char **argv, struct Trapframe *tf)
+{
+	uintptr_t va, vaend;
+	pte_t *pte;
+	if (argc < 3) {
+		cprintf("Usage: showmappings <va start> <va end>\n");
+		return -1;
+	}
+
+	va = strtol(argv[1]+2, 0, 16);
+	vaend = strtol(argv[2]+2, 0, 16);
+
+	if (va > vaend) {
+		cprintf("<va start> must <= <va end>\n");
+		return 0;
+	}
+
+	va = ROUNDDOWN(va, PGSIZE);
+	vaend = ROUNDDOWN(vaend, PGSIZE);
+ 
+	cprintf("    va     ==========>      pa    W U\n");
+	while (va <= vaend) {
+		pte = pgdir_walk(kern_pgdir, (void *)va, 0);
+		if (pte == NULL || !((*pte) & PTE_P))
+			cprintf("%08p ==========> NONE - -\n");
+		else {
+			physaddr_t pa = PTE_ADDR(*pte);
+			cprintf("%08p ==========> %08p %u %u\n", va, pa, (*pte & PTE_W)>>1, (*pte & PTE_U)>>2);
+		}
+		va += PGSIZE;
+	}
+	return 0;
+}
+
+int
+mon_chperm(int argc, char **argv, struct Trapframe *tf)
+{
+	int i, permbits = 0;
+	uintptr_t va;
+	pte_t *pte;
+
+	if (argc < 4) {
+		cprintf("usage: chperm <va> <<+|-><w|u>...>\n");
+		return 0;
+	}
+
+	va = strtol(argv[1]+2, 0, 16);
+	va = ROUNDDOWN(va, PGSIZE);
+
+	pte = pgdir_walk(kern_pgdir, (void *)va, 0);
+
+	if (pte != NULL) {
+		for (i = 3; i < argc; i++) {
+			permbits = 0;
+			if (argv[i][1] == 'w' || argv[i][1] == 'W')
+				permbits = PTE_W;
+			if (argv[i][1] == 'u' || argv[i][1] == 'U')
+				permbits = PTE_U;
+			if (argv[i][0] == '+')
+				*pte |= permbits;
+			else if (argv[i][0] == '-')
+				*pte &= (~permbits);
+		}
+	}
+
+	return 0;
+}
+
+int
+mon_dump(int argc, char **argv, struct Trapframe *tf)
+{
+	physaddr_t pa;
+	uintptr_t va;
+	int *contents, size;
+	if (argc < 4) {
+		cprintf("usage: dump <v|p> <address> <size>\n");
+		return 0;
+	}
+
+	if (argv[1][0] == 'p') {
+		pa = strtol(argv[2]+2, 0, 16);
+		va = (uintptr_t)KADDR(pa);
+	} else {
+		va = strtol(argv[2]+2, 0, 16);
+	}
+	
+	pte_t *pte = pgdir_walk(kern_pgdir, (void *)va, 0);
+	if (pte == NULL || !((*pte)&PTE_P)) {
+		cprintf("page not present!\n");
+		return 0;
+	}
+
+	size = strtol(argv[3], 0, 10);
+
+	contents = (int *)va;
+	int i;
+	cprintf("%p: ", va);
+	for (i = 0; i < size; i++) {
+		cprintf("%p ", contents[i]);
+		if (i % 10 == 9) {
+			cprintf("\n");
+			cprintf("%p: ", va + i*4);
+		}
+	}
+	cprintf("\n");
+
 	return 0;
 }
 
