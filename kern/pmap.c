@@ -113,8 +113,12 @@ boot_alloc(uint32_t n)
 	// LAB 2: Your code here.
 	
 	result = nextfree;
-	if (n > 0) 
-		nextfree += ROUNDUP(n, PGSIZE);
+	if (n > 0) {
+		char *nf = nextfree + ROUNDUP(n, PGSIZE);
+		if (PADDR(nf) > npages*PGSIZE) 
+			panic("not enough memory!");
+		nextfree = nf;
+	}
 
 	return result;
 }
