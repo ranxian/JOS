@@ -8,6 +8,8 @@
 #include <inc/stdarg.h>
 #include <inc/error.h>
 
+int C_color = 0;
+
 /*
  * Space or zero padding and a field width are supported for the numeric
  * formats only.

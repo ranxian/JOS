@@ -5,8 +5,6 @@
 #include <inc/stdio.h>
 #include <inc/stdarg.h>
 
-int C_color = 0;
-
 static void
 putch(int ch, int *cnt)
 {
