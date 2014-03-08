@@ -197,7 +197,7 @@ mem_init(void)
 	//      (ie. perm = PTE_U | PTE_P)
 	//    - pages itself -- kernel RW, user NONE
 	// Your code goes here:
-	boot_map_region(kern_pgdir, UPAGES, ROUNDUP(npages * sizeof(struct PageInfo), PGSIZE), PADDR(pages), PTE_U|PTE_P);
+	boot_map_region(kern_pgdir, UPAGES, ROUNDUP(npages * sizeof(struct PageInfo), PGSIZE), PADDR(pages), PTE_U);
 
 
 	//////////////////////////////////////////////////////////////////////
@@ -207,7 +207,7 @@ mem_init(void)
 	//    - the new image at UENVS  -- kernel R, user R
 	//    - envs itself -- kernel RW, user NONE
 	// LAB 3: Your code here.
-	boot_map_region(kern_pgdir, UENVS, ROUNDUP(NENV * sizeof(struct Env), PGSIZE), PADDR(envs), PTE_U|PTE_P);
+	boot_map_region(kern_pgdir, UENVS, ROUNDUP(NENV * sizeof(struct Env), PGSIZE), PADDR(envs), PTE_U);
 
 	//////////////////////////////////////////////////////////////////////
 	// Use the physical memory that 'bootstack' refers to as the kernel
@@ -220,7 +220,7 @@ mem_init(void)
 	//       overwrite memory.  Known as a "guard page".
 	//     Permissions: kernel RW, user NONE
 	// Your code goes here:
-	boot_map_region(kern_pgdir, KSTACKTOP-KSTKSIZE, KSTKSIZE, PADDR(bootstack), PTE_P|PTE_W);
+	boot_map_region(kern_pgdir, KSTACKTOP-KSTKSIZE, KSTKSIZE, PADDR(bootstack), PTE_W);
 	// boot_map_region(kern_pgdir, KSTACKTOP-PTSIZE, KSTACKTOP-KSTKSIZE, 0, 0);
 
 	//////////////////////////////////////////////////////////////////////
@@ -232,9 +232,9 @@ mem_init(void)
 	// Permissions: kernel RW, user NONE
 	// Your code goes here:
 	if (enable_pse)
-		boot_map_region_pse(kern_pgdir, KERNBASE, (~0)-KERNBASE, 0, PTE_P|PTE_W);
+		boot_map_region_pse(kern_pgdir, KERNBASE, (~0)-KERNBASE, 0, PTE_W);
 	else
-		boot_map_region(kern_pgdir, KERNBASE, (~0)-KERNBASE, 0, PTE_P|PTE_W);
+		boot_map_region(kern_pgdir, KERNBASE, (~0)-KERNBASE, 0, PTE_W);
 
 	// Check that the initial page directory has been set up correctly.
 	check_kern_pgdir();
@@ -316,15 +316,12 @@ page_init(void)
 	for (; i < npages; i++)
 		pages[i].pp_ref = 0;
 
-	int cnt = 0;
 	for (i = 0; i < npages; i++) {
 		if (pages[i].pp_ref == 0) {
 			pages[i].pp_link = page_free_list;
 			page_free_list = &pages[i];
-			cnt++;
 		}
 	}
-	cprintf("all free page %d\n", cnt);
 }
 
 //
@@ -597,6 +594,18 @@ int
 user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 {
 	// LAB 3: Your code here.
+	size_t sz = 0;
+	pte_t *pte;
+
+
+	while (sz < len) {
+		pte = pgdir_walk(env->env_pgdir, va+sz, 0);
+		assert(((*pte)&(perm|PTE_P)) == (perm|PTE_P));
+		sz += PGSIZE;
+	}
+	
+	pte = pgdir_walk(env->env_pgdir, va+len, 0);
+	assert(((*pte)&(perm|PTE_P)) == (perm|PTE_P));
 
 	return 0;
 }
