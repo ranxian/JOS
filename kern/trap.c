@@ -64,12 +64,14 @@ trap_init(void)
 {
 	extern struct Segdesc gdt[];
 	extern uintptr_t vectors[];
+	extern void vector48();
 
 	// LAB 3: Your code here.
 	int i;
 	for (i = 0; i < 31; i++)
 		SETGATE(idt[i], 0, GD_KT, vectors[i], 0);
 	SETGATE(idt[T_BRKPT], 0, GD_KT, vectors[T_BRKPT], 3);
+	SETGATE(idt[T_SYSCALL], 0, GD_KT, vector48, 3);
 
 	// Per-CPU setup 
 	trap_init_percpu();
@@ -156,6 +158,11 @@ trap_dispatch(struct Trapframe *tf)
 		case T_DEBUG:
 			monitor(tf);
 			return;
+		case T_SYSCALL:
+			tf->tf_regs.reg_eax = 
+				syscall(tf->tf_regs.reg_eax, tf->tf_regs.reg_edx, tf->tf_regs.reg_ecx, 
+						tf->tf_regs.reg_ebx, tf->tf_regs.reg_edi, tf->tf_regs.reg_esi);
+			return;
 		default:
 			break;
 	}
@@ -220,6 +227,8 @@ page_fault_handler(struct Trapframe *tf)
 	// Handle kernel-mode page faults.
 
 	// LAB 3: Your code here.
+	if ((tf->tf_cs & 3) == 0)
+		panic("kernel fault va %x ip %08x", fault_va, tf->tf_eip);
 
 	// We've already handled kernel-mode exceptions, so if we get here,
 	// the page fault happened in user mode.

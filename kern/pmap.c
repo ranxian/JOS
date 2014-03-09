@@ -597,15 +597,30 @@ user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 	size_t sz = 0;
 	pte_t *pte;
 
+	if ((uintptr_t)va >= ULIM) {
+		user_mem_check_addr = (uintptr_t)va;
+		return -E_FAULT;
+	}
+
+	if ((uintptr_t)va+len >= ULIM) {
+		user_mem_check_addr = (uintptr_t)ULIM;
+		return -E_FAULT;
+	}
+
 
 	while (sz < len) {
 		pte = pgdir_walk(env->env_pgdir, va+sz, 0);
-		assert(((*pte)&(perm|PTE_P)) == (perm|PTE_P));
+		if (((*pte)&(perm|PTE_P)) != (perm|PTE_P)) {
+			user_mem_check_addr = (uintptr_t)((sz == 0) ? va : ROUNDDOWN(va+sz, PGSIZE));
+			// user_mem_check_addr = va+sz;
+			return -E_FAULT;
+		}
 		sz += PGSIZE;
 	}
 	
 	pte = pgdir_walk(env->env_pgdir, va+len, 0);
-	assert(((*pte)&(perm|PTE_P)) == (perm|PTE_P));
+	if (((*pte)&(perm|PTE_P)) != (perm|PTE_P))
+		return -E_FAULT;
 
 	return 0;
 }
