@@ -30,6 +30,7 @@ static struct Command commands[] = {
 	{ "showmappings", "Show virtual page mappings", mon_showmappings },
 	{ "chperm", "Change permission bits", mon_chperm },
 	{ "dump", "Dump memory content", mon_dump },
+	{ "c", "Conitnue excute next instruction and break", mon_continue },
 };
 #define NCOMMANDS (sizeof(commands)/sizeof(commands[0]))
 
@@ -188,6 +189,13 @@ mon_dump(int argc, char **argv, struct Trapframe *tf)
 	cprintf("\n");
 
 	return 0;
+}
+
+int mon_continue(int argc, char **argv, struct Trapframe *tf)
+{
+	tf->tf_eflags |= FL_TF;
+
+	return -1;
 }
 
 
