@@ -401,6 +401,9 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 			return NULL;
 	}
 
+	if (*pde & PTE_PS)
+		return pde;
+
 	pt = KADDR(PTE_ADDR(*pde));
 	pte = &pt[ptx];
 
