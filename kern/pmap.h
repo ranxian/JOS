@@ -82,6 +82,7 @@ pa2page(physaddr_t pa)
 	return &pages[PGNUM(pa)];
 }
 
+// for given PageInfo pp, return its kernel kernel virtual address
 static inline void*
 page2kva(struct PageInfo *pp)
 {

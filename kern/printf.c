@@ -5,11 +5,10 @@
 #include <inc/stdio.h>
 #include <inc/stdarg.h>
 
-
 static void
 putch(int ch, int *cnt)
 {
-	cputchar(ch);
+	cputchar(ch | (C_color));
 	*cnt++;
 }
 
