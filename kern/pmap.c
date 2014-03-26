@@ -59,6 +59,7 @@ i386_detect_memory(void)
 		lcr4(cr4);
 		enable_pse = 1;
 	}
+	enable_pse = 0;
 
 	cprintf("Physical memory: %uK available, base = %uK, extended = %uK\n",
 		npages * PGSIZE / 1024,
@@ -289,6 +290,12 @@ mem_init_mp(void)
 	//     Permissions: kernel RW, user NONE
 	//
 	// LAB 4: Your code here:
+	int i;
+	for (i = 0; i < NCPU; i++) {
+		uintptr_t kstacktop_i = KSTACKTOP - i * (KSTKSIZE + KSTKGAP);
+		boot_map_region(kern_pgdir, kstacktop_i - KSTKSIZE, KSTKSIZE, PADDR(percpu_kstacks[i]), PTE_W);
+	}
+
 
 }
 
@@ -349,6 +356,9 @@ page_init(void)
 	// rest is free
 	for (; i < npages; i++)
 		pages[i].pp_ref = 0;
+
+	// page at MPENTRY_PADDR is in use
+	pages[PGNUM(MPENTRY_PADDR)].pp_ref = 1;
 
 	for (i = 0; i < npages; i++) {
 		if (pages[i].pp_ref == 0) {
@@ -468,7 +478,7 @@ boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm
 {
 	size_t sz = 0;
 
-	while (sz <= size) {
+	while (sz < size) {
 		pte_t *pte = pgdir_walk(pgdir, (void *)va, 1);
 		*pte = pa|perm|PTE_P;
 		va += PGSIZE;
@@ -636,7 +646,16 @@ mmio_map_region(physaddr_t pa, size_t size)
 	// Hint: The staff solution uses boot_map_region.
 	//
 	// Your code here:
-	panic("mmio_map_region not implemented");
+	int sz = ROUNDUP(size, PGSIZE);
+	if (base + sz >= MMIOLIM)
+		panic("not enough io memory");
+	boot_map_region(kern_pgdir, base, sz, pa, PTE_PCD|PTE_PWT|PTE_W);
+
+	uintptr_t res = base;
+	base += sz;
+	return (void *)res;
+	
+	// panic("mmio_map_region not implemented");
 }
 
 static uintptr_t user_mem_check_addr;
@@ -890,9 +909,10 @@ check_kern_pgdir(void)
 	// (updated in lab 4 to check per-CPU kernel stacks)
 	for (n = 0; n < NCPU; n++) {
 		uint32_t base = KSTACKTOP - (KSTKSIZE + KSTKGAP) * (n + 1);
-		for (i = 0; i < KSTKSIZE; i += PGSIZE)
+		for (i = 0; i < KSTKSIZE; i += PGSIZE) {
 			assert(check_va2pa(pgdir, base + KSTKGAP + i)
 				== PADDR(percpu_kstacks[n]) + i);
+		}
 		for (i = 0; i < KSTKGAP; i += PGSIZE)
 			assert(check_va2pa(pgdir, base + i) == ~0);
 	}
