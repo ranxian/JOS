@@ -15,6 +15,7 @@ forkchild(const char *cur, char branch)
 		return;
 
 	snprintf(nxt, DEPTH+1, "%s%c", cur, branch);
+	// cprintf("-- %s, %c, %s\n", cur, branch, nxt);
 	if (fork() == 0) {
 		forktree(nxt);
 		exit();

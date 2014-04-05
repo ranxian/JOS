@@ -8,6 +8,8 @@
 #include <inc/stdarg.h>
 #include <inc/error.h>
 
+int C_color = 0;
+
 /*
  * Space or zero padding and a field width are supported for the numeric
  * formats only.
@@ -215,10 +217,13 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
 		// (unsigned) octal
 		case 'o':
 			// Replace this with your code.
-			putch('X', putdat);
-			putch('X', putdat);
-			putch('X', putdat);
-			break;
+			// putch('X', putdat);
+			// putch('X', putdat);
+			// putch('X', putdat);
+			// break;
+			num = getuint(&ap, lflag);
+			base = 8;
+			goto number;
 
 		// pointer
 		case 'p':
@@ -235,6 +240,22 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
 			base = 16;
 		number:
 			printnum(putch, putdat, num, base, width, padc);
+			break;
+
+		// color format
+		case 'C':
+			if (C_color == 0) {
+				char fc = *fmt++; // foreground color;
+				char bc = *fmt++;
+				if (fc == 'R') C_color = (C_R << 12);
+				if (fc == 'B') C_color = (C_B << 12);
+				if (fc == 'Y') C_color = (C_Y << 12);
+				if (bc == 'R') C_color |= (C_R << 8);
+				if (bc == 'B') C_color |= (C_B << 8);
+				if (bc == 'Y') C_color |= (C_Y << 8);
+			} else {
+				C_color = 0;
+			}
 			break;
 
 		// escaped '%' character
