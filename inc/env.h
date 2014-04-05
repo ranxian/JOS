@@ -68,6 +68,9 @@ struct Env {
 	uint32_t env_ipc_value;		// Data value sent to us
 	envid_t env_ipc_from;		// envid of the sender
 	int env_ipc_perm;		// Perm of page mapping received
+
+	// Lab4 challenge
+	int priority;
 };
 
 #endif // !JOS_INC_ENV_H
