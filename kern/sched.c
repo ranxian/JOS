@@ -33,7 +33,8 @@ sched_yield(void)
 
 	if (curenv != NULL) {
 		cur_envx = ENVX(curenv->env_id);
-		curenv->env_status = ENV_RUNNABLE;
+		if (curenv->env_status == ENV_RUNNING)
+			curenv->env_status = ENV_RUNNABLE;
 	} else {
 		cur_envx = 0;
 	}

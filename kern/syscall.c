@@ -332,7 +332,50 @@ static int
 sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 {
 	// LAB 4: Your code here.
-	panic("sys_ipc_try_send not implemented");
+	struct Env *env;
+	int r;
+	pte_t *pte;
+
+	// Check env exists
+	if ((r = envid2env(envid, &env, 0)) < 0)
+		return -E_BAD_ENV;
+	// Check env is blocked and no other env managed to send first
+	if (env->env_status != ENV_NOT_RUNNABLE || !env->env_ipc_recving)
+		return -E_IPC_NOT_RECV;
+	// If srcva < UTOP
+	if ((uint32_t)srcva < UTOP) {
+		// check page-aligned
+		if ((uint32_t)srcva < UTOP && (uint32_t)srcva % PGSIZE != 0)
+			return -E_INVAL;
+		// check perm
+		if ( ((perm & PTE_U) == 0 || (perm & PTE_P) == 0) || // PTE_U | PTE_P must be set
+	 		(perm & (~(PTE_U|PTE_P|PTE_AVAIL|PTE_W))) != 0    // other bits is set
+	 	) {
+			return -E_INVAL;
+		}
+		// check page exist
+		pte = pgdir_walk(curenv->env_pgdir, srcva, 0);
+		if (!(*pte&PTE_P))
+			return -E_INVAL;
+		// check write privilege
+		if ((perm&PTE_W) && !(*pte&PTE_W))
+			return -E_INVAL;
+	}
+
+
+	// Check passed
+	env->env_ipc_recving = 0;
+	env->env_ipc_from = curenv->env_id;
+	env->env_ipc_value = value;
+	if ((uintptr_t)srcva < UTOP && (uint32_t)env->env_ipc_dstva < UTOP) {
+		env->env_ipc_perm = perm;	
+		if ((r = sys_page_map(0, srcva, envid, env->env_ipc_dstva, perm)) < 0)
+			return -E_NO_MEM; // It must be not enough memory 
+	}
+	env->env_status = ENV_RUNNABLE;
+	env->env_tf.tf_regs.reg_eax = 0;
+
+	return 0;
 }
 
 // Block until a value is ready.  Record that you want to receive
@@ -350,7 +393,16 @@ static int
 sys_ipc_recv(void *dstva)
 {
 	// LAB 4: Your code here.
-	panic("sys_ipc_recv not implemented");
+	if ((uintptr_t)dstva < UTOP) {
+		if ((uintptr_t)dstva % PGSIZE != 0)
+			return -E_INVAL;
+		curenv->env_ipc_dstva = dstva;
+	}
+	
+	curenv->env_ipc_recving = 1;
+	curenv->env_status = ENV_NOT_RUNNABLE;
+	sched_yield();
+
 	return 0;
 }
 
@@ -388,6 +440,10 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 			return sys_page_unmap((envid_t)a1, (void *)a2);
 		case SYS_env_set_pgfault_upcall:
 			return sys_env_set_pgfault_upcall((envid_t)a1, (void *)a2);
+		case SYS_ipc_try_send:
+			return sys_ipc_try_send((envid_t)a1, (uint32_t)a2, (void *)a3, (unsigned)a4);
+		case SYS_ipc_recv:
+			return sys_ipc_recv((void *)a1);
 		default:
 			break;
 	}
