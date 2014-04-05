@@ -65,8 +65,10 @@ _pgfault_upcall:
 	// ways as registers become unavailable as scratch space.
 	//
 	// LAB 4: Your code here.
-	movl 0x28(%esp), %ebx
-	movl 0x30(%esp), %eax
+	movl 0x28(%esp), %ebx  	// get eip
+	movl 0x30(%esp), %eax 	// get esp
+	addl $-4, %eax 		   
+	movl %eax, 0x30(%esp)	// update esp
 	movl %ebx, (%eax)
 	addl $8, %esp
 	

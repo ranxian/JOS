@@ -48,8 +48,10 @@ sched_yield(void)
 		}
 	}
 
-	if (idle != NULL)
+	if (idle != NULL) {
+		// cprintf("env[%p] is in turn with eip=%p\n", idle->env_id, idle->env_tf.tf_eip);
 		env_run(idle);
+	}
 
 	// sched_halt never returns
 	sched_halt();

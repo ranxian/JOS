@@ -342,15 +342,17 @@ page_fault_handler(struct Trapframe *tf)
 	int utfsz = sizeof(struct UTrapframe);
 
 	if (curenv->env_pgfault_upcall != NULL) {
-
-		if (user_mem_check(curenv, (void *)UXSTACKTOP-PGSIZE, PGSIZE-1, PTE_W) < 0)
-			goto bad;
+		user_mem_assert(curenv, (void *)UXSTACKTOP-(4+utfsz), utfsz, PTE_W);
+		// user_mem_check(curenv, (void *)tf->tf_esp-(4+utfsz), 4+utfsz, PTE_W);
+		// if (user_mem_assert(curenv, (void *)UXSTACKTOP-PGSIZE, PGSIZE-1, PTE_W) < 0)
+		// 	goto bad;
 
 		// check is recursive fault
 		if (tf->tf_esp >= UXSTACKTOP-PGSIZE && tf->tf_esp <= UXSTACKTOP-1) {
 			rec_fault = 1;
-			if (user_mem_check(curenv, (void *)tf->tf_esp-(4+utfsz), 4+utfsz, PTE_W) < 0)
-				goto bad;
+			user_mem_assert(curenv, (void *)tf->tf_esp-(4+utfsz), 4+utfsz, PTE_W);
+			// if (user_mem_check(curenv, (void *)tf->tf_esp-(4+utfsz), 4+utfsz, PTE_W) < 0)
+			// 	goto bad;
 		}
 
 		// prepare utf
@@ -359,7 +361,7 @@ page_fault_handler(struct Trapframe *tf)
 		utf.utf_regs = tf->tf_regs;
 		utf.utf_eip = tf->tf_eip;
 		utf.utf_eflags = tf->tf_eflags;
-		utf.utf_esp = tf->tf_esp-4;
+		utf.utf_esp = tf->tf_esp;
 
 		// change env
 		if (!rec_fault)
