@@ -116,3 +116,9 @@ sys_env_set_fault_handler(envid_t envid, int faultno, void *handler)
 {
 	return syscall(SYS_env_set_fault_handler, 1, envid, faultno, (uint32_t)handler, 0, 0);
 }
+
+int
+sys_env_set_lottery(envid_t envid, int lottery)
+{
+	return syscall(SYS_env_set_lottery, 1, envid, lottery, 0, 0, 0);
+}

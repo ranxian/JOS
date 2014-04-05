@@ -17,6 +17,7 @@ enum {
 	SYS_ipc_recv,
 	SYS_env_set_fault_upcall,
 	SYS_env_set_fault_handler,
+	SYS_env_set_lottery,
 	NSYSCALLS
 };
 

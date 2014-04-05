@@ -70,7 +70,7 @@ struct Env {
 	int env_ipc_perm;		// Perm of page mapping received
 
 	// Lab4 challenge
-	int priority;
+	int env_lottery;
 };
 
 #endif // !JOS_INC_ENV_H
