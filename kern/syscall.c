@@ -128,23 +128,35 @@ sys_env_set_status(envid_t envid, int status)
 	return 0;
 }
 
-// Set the page fault upcall for 'envid' by modifying the corresponding struct
-// Env's 'env_pgfault_upcall' field.  When 'envid' causes a page fault, the
-// kernel will push a fault record onto the exception stack, then branch to
-// 'func'.
-//
-// Returns 0 on success, < 0 on error.  Errors are:
-//	-E_BAD_ENV if environment envid doesn't currently exist,
-//		or the caller doesn't have permission to change envid.
 static int
-sys_env_set_pgfault_upcall(envid_t envid, void *func)
+sys_env_set_fault_upcall(envid_t envid, void *func)
 {
-	// LAB 4: Your code here.
 	struct Env *env;
 	if (envid2env(envid, &env, 1) < 0)
 		return -E_BAD_ENV;
 
-	env->env_pgfault_upcall = func;
+	env->env_fault_upcall = func;
+	return 0;
+}
+
+static int
+sys_env_set_fault_handler(envid_t envid, int faultno, void *handler)
+{
+	struct Env *env;
+	if (envid2env(envid, &env, 1) < 0)
+		return -E_BAD_ENV;
+
+	switch (faultno) {
+		case T_DIVIDE:
+			env->env_divzero_handler = handler;
+			break;
+		case T_PGFLT:
+			env->env_pgfault_handler = handler;
+			break;
+		default:
+			panic("Fault handler not implemented");
+	}
+
 	return 0;
 }
 
@@ -438,12 +450,14 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 	     				(envid_t)a3, (void *)a4, (int)a5);
 		case SYS_page_unmap:
 			return sys_page_unmap((envid_t)a1, (void *)a2);
-		case SYS_env_set_pgfault_upcall:
-			return sys_env_set_pgfault_upcall((envid_t)a1, (void *)a2);
 		case SYS_ipc_try_send:
 			return sys_ipc_try_send((envid_t)a1, (uint32_t)a2, (void *)a3, (unsigned)a4);
 		case SYS_ipc_recv:
 			return sys_ipc_recv((void *)a1);
+		case SYS_env_set_fault_upcall:
+			return sys_env_set_fault_upcall((envid_t)a1, (void*)a2);
+		case SYS_env_set_fault_handler:
+			return sys_env_set_fault_handler((envid_t)a1, (int)a2, (void *)a3);
 		default:
 			break;
 	}

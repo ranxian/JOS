@@ -8,11 +8,9 @@
 
 
 // Assembly language pgfault entrypoint defined in lib/pfentry.S.
-extern void _pgfault_upcall(void);
+extern void _fault_upcall(void);
 
 // Pointer to currently installed C-language pgfault handler.
-void (*_pgfault_handler)(struct UTrapframe *utf);
-
 //
 // Set the page fault handler function.
 // If there isn't one yet, _pgfault_handler will be 0.
@@ -21,21 +19,25 @@ void (*_pgfault_handler)(struct UTrapframe *utf);
 // at UXSTACKTOP), and tell the kernel to call the assembly-language
 // _pgfault_upcall routine when a page fault occurs.
 //
-void
-set_pgfault_handler(void (*handler)(struct UTrapframe *utf))
+
+void set_pgfault_handler(void (*handler)(struct UTrapframe *utf))
+{
+	set_fault_handler(T_PGFLT, handler);
+}
+
+void set_fault_handler(int faultno, void (*handler)(struct UTrapframe *utf))
 {
 	int r;
 	envid_t envid;
+	static int uxstack_mapped = 0;
+	envid = sys_getenvid();
 
-	if (_pgfault_handler == 0) {
-		// First time through!
-		// LAB 4: Your code here.
-		envid = sys_getenvid();
+	if (uxstack_mapped == 0 ) {
 		if ((r = sys_page_alloc(envid, (void *)UXSTACKTOP-PGSIZE, PTE_P|PTE_U|PTE_W)) < 0)
 			panic("sys_page_alloc: %e", r);
-		sys_env_set_pgfault_upcall(envid, _pgfault_upcall);
+		uxstack_mapped = 1;
+		sys_env_set_fault_upcall(envid, _fault_upcall);
 	}
 
-	// Save handler pointer for assembly to call.
-	_pgfault_handler = handler;
+	sys_env_set_fault_handler(envid, faultno, handler);
 }

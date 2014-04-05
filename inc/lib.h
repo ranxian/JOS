@@ -32,8 +32,9 @@ extern const volatile struct PageInfo pages[];
 // exit.c
 void	exit(void);
 
-// pgfault.c
+// fault.c
 void	set_pgfault_handler(void (*handler)(struct UTrapframe *utf));
+void 	set_fault_handler(int faultno, void (*handler)(struct UTrapframe *utf));
 
 // readline.c
 char*	readline(const char *buf);
@@ -46,13 +47,14 @@ int	sys_env_destroy(envid_t);
 void	sys_yield(void);
 static envid_t sys_exofork(void);
 int	sys_env_set_status(envid_t env, int status);
-int	sys_env_set_pgfault_upcall(envid_t env, void *upcall);
 int	sys_page_alloc(envid_t env, void *pg, int perm);
 int	sys_page_map(envid_t src_env, void *src_pg,
 		     envid_t dst_env, void *dst_pg, int perm);
 int	sys_page_unmap(envid_t env, void *pg);
 int	sys_ipc_try_send(envid_t to_env, uint32_t value, void *pg, int perm);
 int	sys_ipc_recv(void *rcv_pg);
+int sys_env_set_fault_upcall(envid_t envid, void *upcall);
+int sys_env_set_fault_handler(envid_t envid, int faultno, void *handler);
 
 // This must be inlined.  Exercise for reader: why?
 static __inline envid_t __attribute__((always_inline))

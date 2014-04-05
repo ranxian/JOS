@@ -102,7 +102,7 @@ duppage(envid_t envid, unsigned pn)
 envid_t
 fork(void)
 {
-	extern void _pgfault_upcall(void);
+	extern void _fault_upcall(void);
 	// LAB 4: Your code here.
 	envid_t envid;
 	int i, r, pnend;
@@ -131,7 +131,8 @@ fork(void)
 	// for (i = 0; i < pnend; i++)
 	// 	duppage(envid, i);
 	// Setup page fault handler
-	sys_env_set_pgfault_upcall(envid, _pgfault_upcall);
+	sys_env_set_fault_upcall(envid, _fault_upcall);
+	sys_env_set_fault_handler(envid, T_PGFLT, pgfault);
 	// Alloc UXSTACK
 	if ((r = sys_page_alloc(envid, (void *)UXSTACKTOP-PGSIZE, PTE_P|PTE_U|PTE_W)) < 0)
 			panic("sys_page_alloc: %e", r);

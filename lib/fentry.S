@@ -30,11 +30,11 @@
 // code, pointed to by the global variable '_pgfault_handler'.
 
 .text
-.globl _pgfault_upcall
-_pgfault_upcall:
+.globl _fault_upcall
+_fault_upcall:
 	// Call the C page fault handler.
+	popl %eax
 	pushl %esp			// function argument: pointer to UTF
-	movl _pgfault_handler, %eax
 	call *%eax
 	addl $4, %esp			// pop function argument
 	
