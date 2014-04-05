@@ -75,7 +75,7 @@ trap_init(void)
 
 	// LAB 3: Your code here.
 	int i;
-	for (i = 0; i < 31; i++)
+	for (i = 0; i <= 48; i++)
 		SETGATE(idt[i], 0, GD_KT, vectors[i], 0);
 	SETGATE(idt[T_BRKPT], 0, GD_KT, vectors[T_BRKPT], 3);
 	SETGATE(idt[T_SYSCALL], 0, GD_KT, vector48, 3);
