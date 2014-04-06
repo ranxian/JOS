@@ -33,6 +33,12 @@ bc_pgfault(struct UTrapframe *utf)
 	// Hint: first round addr to page boundary.
 	//
 	// LAB 5: you code here:
+	addr = ROUNDDOWN(addr, PGSIZE);
+	sys_page_alloc(sys_getenvid(), addr, PTE_U|PTE_P|PTE_W);
+
+	int secno = blockno * BLKSECTS;
+	int nsecs = PGSIZE / SECTSIZE;
+	ide_read(secno, addr, nsecs);
 
 }
 
