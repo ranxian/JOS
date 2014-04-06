@@ -438,6 +438,21 @@ sys_ipc_recv(void *dstva)
 	return 0;
 }
 
+static int
+sys_env_set_lottery(envid_t envid, int lottery)
+{
+	struct Env *env;
+	int r;
+
+	if ((r = envid2env(envid, &env, 1)) < 0)
+		return r;
+	if (lottery < 0 || lottery >= 1024)
+		return -E_INVAL;
+	env->env_lottery = lottery;
+
+	return 0;
+}
+
 // Dispatches to the correct kernel function, passing the arguments.
 int32_t
 syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, uint32_t a5)
@@ -478,6 +493,8 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 			return sys_env_set_fault_upcall((envid_t)a1, (void*)a2);
 		case SYS_env_set_fault_handler:
 			return sys_env_set_fault_handler((envid_t)a1, (int)a2, (void *)a3);
+		case SYS_env_set_lottery:
+			return sys_env_set_lottery((envid_t)a1, (int)a2);
 		default:
 			break;
 	}

@@ -9,7 +9,7 @@ void sched_halt(void);
 
 // Choose a user environment to run and run it.
 void
-sched_yield(void)
+sched_yield_round_robin(void)
 {
 	struct Env *idle = NULL;
 	int cur_envx, idle_envx, i;
@@ -51,6 +51,57 @@ sched_yield(void)
 
 	if (idle != NULL)
 		env_run(idle);
+
+	// sched_halt never returns
+	sched_halt();
+}
+
+// may not return
+static void
+draw_lottery(struct Env *runnable_envs[], int nenv)
+{
+	if (nenv <= 0)
+		panic("draw_lottery: should not pass nenv=%d", nenv);
+
+	static unsigned lottery_mul = 214013;
+	static unsigned lottery_add = 2531011;
+	static unsigned lottery_seed = 234;
+	int pos[NENV] = {0};
+	int i, sum;
+
+	for (i = 0; i < nenv; i++) {
+		pos[i+1] = pos[i] + runnable_envs[i]->env_lottery;
+	}
+	sum = pos[i];
+
+	lottery_seed = lottery_seed * lottery_mul + lottery_add;
+	int winner = lottery_seed % sum;;
+
+	for (i = 0; i < nenv; i++) {
+		if (winner >= pos[i] && winner < pos[i+1])
+			env_run(runnable_envs[i]);
+	}
+
+	panic("draw_lottery: should not return when nenv=%d", nenv);
+}
+
+void
+sched_yield(void)
+{
+	int i, nrunnable = 0;
+	struct Env *runnable_envs[NENV];
+
+	if (curenv != NULL && curenv->env_status == ENV_RUNNING)
+		curenv->env_status = ENV_RUNNABLE;
+
+	for (i = 0; i < NENV; i++) {
+		if (envs[i].env_status == ENV_RUNNABLE) {
+			runnable_envs[nrunnable++] = &envs[i];
+		}
+	}
+
+	if (nrunnable != 0)
+		draw_lottery(runnable_envs, nrunnable);
 
 	// sched_halt never returns
 	sched_halt();

@@ -59,6 +59,7 @@ int	sys_ipc_try_send(envid_t to_env, uint32_t value, void *pg, int perm);
 int	sys_ipc_recv(void *rcv_pg);
 int sys_env_set_fault_upcall(envid_t envid, void *upcall);
 int sys_env_set_fault_handler(envid_t envid, int faultno, void *handler);
+int sys_env_set_lottery(envid_t envid, int lottery);
 
 // This must be inlined.  Exercise for reader: why?
 static __inline envid_t __attribute__((always_inline))
