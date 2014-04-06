@@ -56,6 +56,7 @@ i386_init(void)
 	boot_aps();
 
 	// Start fs.
+
 	ENV_CREATE(fs_fs, ENV_TYPE_FS);
 
 #if defined(TEST)
@@ -65,7 +66,6 @@ i386_init(void)
 	// Touch all you want.
 	ENV_CREATE(user_icode, ENV_TYPE_USER);
 #endif // TEST*
-
 	// Should not be necessary - drains keyboard because interrupt has given up.
 	kbd_intr();
 

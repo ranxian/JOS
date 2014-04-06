@@ -294,8 +294,8 @@ region_alloc(struct Env *e, void *va, size_t len)
 	//   'va' and 'len' values that are not page-aligned.
 	//   You should round va down, and round (va + len) up.
 	//   (Watch out for corner-cases!)
-	va = ROUNDDOWN(va, PGSIZE);
 	void *vaend = ROUNDUP((va+len), PGSIZE);
+	va = ROUNDDOWN(va, PGSIZE);
 	struct PageInfo *pp;
 	while (va < vaend) {
 		if ((pp = page_alloc(0)) == NULL)
@@ -380,7 +380,6 @@ load_icode(struct Env *e, uint8_t *binary, size_t size)
 			memcpy((void *)ph->p_va, binary + ph->p_offset, ph->p_filesz);
 			// 0 clear margin
 			memset((void *)ph->p_va + ph->p_filesz, 0, ph->p_memsz - ph->p_filesz);		
-			
 		}
 	}
 
@@ -417,6 +416,8 @@ env_create(uint8_t *binary, size_t size, enum EnvType type)
 
 	// If this is the file server (type == ENV_TYPE_FS) give it I/O privileges.
 	// LAB 5: Your code here.
+	if (type == ENV_TYPE_FS)
+		env->env_tf.tf_eflags |= FL_IOPL_3;
 }
 
 //
