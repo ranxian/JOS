@@ -137,7 +137,16 @@ sys_env_set_trapframe(envid_t envid, struct Trapframe *tf)
 	// LAB 5: Your code here.
 	// Remember to check whether the user has supplied us with a good
 	// address!
-	panic("sys_env_set_trapframe not implemented");
+	struct Env *env;
+	int r;
+	if ((r = envid2env(envid, &env, 1)) < 0)
+		return r;
+
+	user_mem_assert(env, tf, sizeof(struct Trapframe), PTE_U|PTE_W|PTE_P);
+
+	env->env_tf = *tf;
+
+	return 0;
 }
 
 // Set the page fault upcall for 'envid' by modifying the corresponding struct
@@ -367,6 +376,7 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 	struct Env *env;
 	int r;
 	pte_t *pte;
+	struct PageInfo *pp;
 
 	// Check env exists
 	if ((r = envid2env(envid, &env, 0)) < 0)
@@ -386,8 +396,8 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 			return -E_INVAL;
 		}
 		// check page exist
-		pte = pgdir_walk(curenv->env_pgdir, srcva, 0);
-		if (!(*pte&PTE_P))
+		pp = page_lookup(curenv->env_pgdir, srcva, &pte);
+		if (pp == NULL)
 			return -E_INVAL;
 		// check write privilege
 		if ((perm&PTE_W) && !(*pte&PTE_W))
@@ -400,9 +410,9 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 	env->env_ipc_from = curenv->env_id;
 	env->env_ipc_value = value;
 	if ((uintptr_t)srcva < UTOP && (uint32_t)env->env_ipc_dstva < UTOP) {
-		env->env_ipc_perm = perm;	
-		if ((r = sys_page_map(0, srcva, envid, env->env_ipc_dstva, perm)) < 0)
-			return -E_NO_MEM; // It must be not enough memory 
+		env->env_ipc_perm = perm;
+		if ((r = page_insert(env->env_pgdir, pp, env->env_ipc_dstva, perm)) < 0)
+			return r;
 	}
 	env->env_status = ENV_RUNNABLE;
 	env->env_tf.tf_regs.reg_eax = 0;
@@ -495,6 +505,8 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 			return sys_env_set_fault_handler((envid_t)a1, (int)a2, (void *)a3);
 		case SYS_env_set_lottery:
 			return sys_env_set_lottery((envid_t)a1, (int)a2);
+		case SYS_env_set_trapframe:
+			return sys_env_set_trapframe((envid_t)a1, (struct Trapframe *)a2);
 		default:
 			break;
 	}
