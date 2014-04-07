@@ -75,7 +75,6 @@ duppage(envid_t envid, unsigned pn)
 	if (pte & PTE_P) {
 		// cprintf("here\n");
 		if (pte & PTE_SHARE) {
-			cprintf("a share page\n");
 			if ((r = sys_page_map(0, va, envid, va,
 			 PGOFF(pte) & (PTE_P|PTE_U|PTE_W|PTE_AVAIL))) < 0)
 			{

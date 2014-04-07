@@ -257,6 +257,7 @@ usage(void)
 void
 umain(int argc, char **argv)
 {
+	cprintf("shell is open\n");
 	int r, interactive, echocmds;
 	struct Argstate args;
 
@@ -291,7 +292,7 @@ umain(int argc, char **argv)
 
 	while (1) {
 		char *buf;
-
+		cprintf("shell is open\n");
 		buf = readline(interactive ? "$ " : NULL);
 		if (buf == NULL) {
 			if (debug)
