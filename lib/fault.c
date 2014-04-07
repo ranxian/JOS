@@ -32,7 +32,7 @@ void set_fault_handler(int faultno, void (*handler)(struct UTrapframe *utf))
 	static int uxstack_mapped = 0;
 	envid = sys_getenvid();
 
-	if (uxstack_mapped == 0 ) {
+	if (uxstack_mapped == 0) {
 		if ((r = sys_page_alloc(envid, (void *)UXSTACKTOP-PGSIZE, PTE_P|PTE_U|PTE_W)) < 0)
 			panic("sys_page_alloc: %e", r);
 		uxstack_mapped = 1;

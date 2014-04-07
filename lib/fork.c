@@ -69,17 +69,29 @@ duppage(envid_t envid, unsigned pn)
 
 	// LAB 4: Your code here.
 	pte_t pte;
-
 	pte = uvpt[pn];
-	if ((pte&PTE_P) && ((pte&PTE_W) || (pte&PTE_COW))) {
-		if ((r = sys_page_map(0, (void *)(pn*PGSIZE), envid, (void *)(pn*PGSIZE), PTE_P|PTE_U|PTE_COW)) < 0)
-			panic("sys_page_map: %e", r);
-		if ((r = sys_page_map(0, (void *)(pn*PGSIZE), 0, (void *)(pn*PGSIZE), PTE_P|PTE_U|PTE_COW)) < 0)
-			panic("sys_page_map: %e", r);
-	} else if (pte&PTE_P) {
-		if ((r = sys_page_map(0, (void *)(pn*PGSIZE), envid, (void *)(pn*PGSIZE), PTE_P|PTE_U)) < 0)
-			panic("sys_page_map: %e", r);
+	void *va = (void *)(pn*PGSIZE);
+
+	if (pte & PTE_P) {
+		// cprintf("here\n");
+		if (pte & PTE_SHARE) {
+			cprintf("a share page\n");
+			if ((r = sys_page_map(0, va, envid, va,
+			 PGOFF(pte) & (PTE_P|PTE_U|PTE_W|PTE_AVAIL))) < 0)
+			{
+				panic("sys_page_map: %e", r);
+			}
+		} else if ((pte&PTE_W) || (pte&PTE_COW)) {
+			if ((r = sys_page_map(0, va, envid, va, PTE_P|PTE_U|PTE_COW)) < 0)
+				panic("sys_page_map: %e", r);
+			if ((r = sys_page_map(0, va, 0, va, PTE_P|PTE_U|PTE_COW)) < 0)
+				panic("sys_page_map: %e", r);
+		} else {
+			if ((r = sys_page_map(0, va, envid, va, PTE_P|PTE_U)) < 0)
+				panic("sys_page_map: %e", r);
+		}
 	}
+	
 	return 0;
 }
 
@@ -105,9 +117,10 @@ fork(void)
 	extern void _fault_upcall(void);
 	// LAB 4: Your code here.
 	envid_t envid;
-	int i, r, pnend;
+	int r;
 	extern unsigned char end[];
 	uint8_t *addr;
+	uintptr_t va;
 	// Set pagefault handler
 	set_pgfault_handler(pgfault);
 	// fork
@@ -120,16 +133,12 @@ fork(void)
 		return 0;
 	}
 	// We're the parent
-	// Map pages, don't map UXSTACK
-	for (addr = (uint8_t*) UTEXT; addr < end; addr += PGSIZE)
-		duppage(envid, PGNUM(addr));
-	// Also copy the stack we are currently running on.
-	duppage(envid, PGNUM(ROUNDDOWN(&addr, PGSIZE)));
+	// Map pages
+	for (va = 0; va < UXSTACKTOP-PGSIZE-PGSIZE; va += PGSIZE) {
+		if (uvpd[PDX(va)] & PTE_P)
+			duppage(envid, PGNUM(va));
+	}
 
-	// pnend = PGNUM(USTACKTOP)-1;
-	// cprintf("pnend=%d\n", pnend);
-	// for (i = 0; i < pnend; i++)
-	// 	duppage(envid, i);
 	// Setup page fault handler
 	sys_env_set_fault_upcall(envid, _fault_upcall);
 	sys_env_set_fault_handler(envid, T_PGFLT, pgfault);
